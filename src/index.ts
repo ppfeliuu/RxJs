@@ -1,19 +1,24 @@
-import { throwError } from "rxjs";
+import { fromEvent } from "rxjs";
+import { debounceTime, map, pluck, mergeAll } from "rxjs/operators";
+import { ajax } from "rxjs/ajax";
 
-const url = "https://api.github.com/users?per_page=5";
+const body = document.querySelector("body");
+const textInput = document.createElement("input");
+const orlderList = document.createElement("ol");
+body.append(textInput, orlderList);
 
-const manejaErrores = (response: Response) => {
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
+const input$ = fromEvent<KeyboardEvent>(textInput, "keyup");
 
-  return response;
-};
-
-const fetchPromesa = fetch(url);
-
-fetchPromesa
-  .then(manejaErrores)
-  .then((res) => res.json())
-  .then((data) => console.log("data", data))
-  .catch((err) => console.warn(err));
+input$
+  .pipe(
+    debounceTime(500),
+    pluck("target", "value"),
+    map((texto) => {
+      return ajax.getJSON(`https://api.github.com/search/users?q=${texto}`);
+    }),
+    mergeAll(),
+    pluck("items")
+  )
+  .subscribe((res) => {
+    console.log(res);
+  });
